@@ -1,4 +1,3 @@
-# Trip Advisor AI Agent using LangChain + Ollama (Local Llama3)
 import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -15,44 +14,52 @@ from langchain_ollama import OllamaLLM
 from pydantic import BaseModel, Field
 
 # Custom Tools for Trip Planning
+
+
 class DestinationRecommenderTool(BaseTool):
     """Tool to recommend destinations based on preferences"""
     name: str = "destination_recommender"
     description: str = "Recommends travel destinations based on user preferences like budget, interests, season, etc."
-    
+
     def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         # This is a simplified implementation - in reality, you'd connect to a travel database or API
         preferences = query.lower()
-        
+
         recommendations = []
-        
+
         if "beach" in preferences or "tropical" in preferences:
-            recommendations.extend(["Maldives", "Bali", "Caribbean Islands", "Hawaii"])
+            recommendations.extend(
+                ["Maldives", "Bali", "Caribbean Islands", "Hawaii"])
         if "mountain" in preferences or "hiking" in preferences:
-            recommendations.extend(["Swiss Alps", "Nepal", "Patagonia", "Rocky Mountains"])
+            recommendations.extend(
+                ["Swiss Alps", "Nepal", "Patagonia", "Rocky Mountains"])
         if "culture" in preferences or "history" in preferences:
             recommendations.extend(["Rome", "Kyoto", "Istanbul", "Cairo"])
         if "budget" in preferences or "cheap" in preferences:
-            recommendations.extend(["Thailand", "Vietnam", "India", "Eastern Europe"])
+            recommendations.extend(
+                ["Thailand", "Vietnam", "India", "Eastern Europe"])
         if "luxury" in preferences or "expensive" in preferences:
             recommendations.extend(["Monaco", "Dubai", "Tokyo", "New York"])
         if "adventure" in preferences:
-            recommendations.extend(["New Zealand", "Costa Rica", "Iceland", "Patagonia"])
-        
+            recommendations.extend(
+                ["New Zealand", "Costa Rica", "Iceland", "Patagonia"])
+
         if not recommendations:
-            recommendations = ["Paris", "London", "Barcelona", "Amsterdam", "Prague"]
-        
+            recommendations = ["Paris", "London",
+                               "Barcelona", "Amsterdam", "Prague"]
+
         return f"Based on your preferences '{query}', I recommend these destinations: {', '.join(recommendations[:5])}"
+
 
 class ItineraryPlannerTool(BaseTool):
     """Tool to create travel itineraries"""
     name: str = "itinerary_planner"
     description: str = "Creates detailed travel itineraries for specific destinations including activities, restaurants, and timing."
-    
+
     def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         # Parse the destination and duration from query
         destination = query.split(" for ")[0] if " for " in query else query
-        
+
         # Sample itinerary data (in a real app, this would come from a database or API)
         itineraries = {
             "paris": {
@@ -71,7 +78,7 @@ class ItineraryPlannerTool(BaseTool):
                 "day3": "Morning: Meiji Shrine, Afternoon: Harajuku & Omotesando, Evening: Robot Restaurant"
             }
         }
-        
+
         dest_key = destination.lower().replace(" ", "")
         if dest_key in itineraries:
             itinerary = itineraries[dest_key]
@@ -82,11 +89,12 @@ class ItineraryPlannerTool(BaseTool):
         else:
             return f"I don't have a specific itinerary for {destination} yet, but I can help you plan based on popular attractions and activities there!"
 
+
 class BudgetCalculatorTool(BaseTool):
     """Tool to estimate travel costs"""
     name: str = "budget_calculator"
     description: str = "Calculates estimated travel costs including flights, accommodation, food, and activities."
-    
+
     def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         # Sample budget estimates (in reality, you'd use real-time pricing APIs)
         budgets = {
@@ -96,21 +104,22 @@ class BudgetCalculatorTool(BaseTool):
             "thailand": {"flights": 900, "hotel": 40, "food": 15, "activities": 25},
             "new york": {"flights": 500, "hotel": 250, "food": 70, "activities": 60}
         }
-        
+
         destination = query.lower().replace(" ", "")
         days = 7  # Default to 7 days
-        
+
         # Try to extract number of days from query
         import re
         day_match = re.search(r'(\d+)\s*days?', query.lower())
         if day_match:
             days = int(day_match.group(1))
-        
+
         if destination in budgets:
             budget = budgets[destination]
-            total_per_day = budget["hotel"] + budget["food"] + budget["activities"]
+            total_per_day = budget["hotel"] + \
+                budget["food"] + budget["activities"]
             total_cost = budget["flights"] + (total_per_day * days)
-            
+
             return f"""Budget estimate for {destination.title()} ({days} days):
             
 Flight: ${budget['flights']}
@@ -123,14 +132,15 @@ Daily cost (excluding flights): ${total_per_day}"""
         else:
             return f"I don't have specific budget data for {destination}, but typical costs vary widely by destination. Budget destinations: $50-100/day, Mid-range: $100-200/day, Luxury: $300+/day"
 
+
 class WeatherInfoTool(BaseTool):
     """Tool to provide weather and seasonal information"""
     name: str = "weather_info"
     description: str = "Provides weather information and best times to visit destinations."
-    
+
     def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         destination = query.lower()
-        
+
         # Sample weather data (in reality, you'd use a weather API)
         weather_data = {
             "paris": {
@@ -140,7 +150,7 @@ class WeatherInfoTool(BaseTool):
                 "winter": "Cool (3-7°C), occasional snow"
             },
             "tokyo": {
-                "best_months": "March-May, September-November", 
+                "best_months": "March-May, September-November",
                 "climate": "Humid subtropical climate",
                 "summer": "Hot and humid (25-30°C), rainy season June-July",
                 "winter": "Cool and dry (5-10°C)"
@@ -152,7 +162,7 @@ class WeatherInfoTool(BaseTool):
                 "winter": "Warm and dry (25-30°C)"
             }
         }
-        
+
         dest_key = destination.replace(" ", "").lower()
         if dest_key in weather_data:
             data = weather_data[dest_key]
@@ -167,14 +177,15 @@ Remember to check current weather forecasts before traveling!"""
         else:
             return f"I don't have specific weather data for {destination}, but I recommend checking current weather forecasts and seasonal patterns before planning your trip."
 
+
 class TravelTipsTool(BaseTool):
     """Tool to provide travel tips and cultural information"""
     name: str = "travel_tips"
     description: str = "Provides travel tips, cultural etiquette, and practical advice for destinations."
-    
+
     def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         destination = query.lower()
-        
+
         tips_data = {
             "japan": [
                 "Remove shoes when entering homes and some restaurants",
@@ -201,7 +212,7 @@ class TravelTipsTool(BaseTool):
                 "Many museums are free on first Sunday mornings"
             ]
         }
-        
+
         dest_key = destination.replace(" ", "").lower()
         if dest_key in tips_data:
             tips = tips_data[dest_key]
@@ -212,6 +223,7 @@ class TravelTipsTool(BaseTool):
         else:
             return "General travel tips: Research local customs, learn basic phrases, respect dress codes, try local cuisine, and always have travel insurance!"
 
+
 def check_ollama_status():
     """Check if Ollama is running and has Llama3 model available"""
     try:
@@ -220,12 +232,14 @@ def check_ollama_status():
         if response.status_code == 200:
             models = response.json()
             model_names = [model['name'] for model in models.get('models', [])]
-            
+
             # Check for Llama3 variants
-            llama3_models = [name for name in model_names if 'llama3' in name.lower()]
-            
+            llama3_models = [
+                name for name in model_names if 'llama3' in name.lower()]
+
             if llama3_models:
-                return True, llama3_models[0]  # Return first available Llama3 model
+                # Return first available Llama3 model
+                return True, llama3_models[0]
             else:
                 return False, None
         else:
@@ -235,16 +249,17 @@ def check_ollama_status():
     except Exception:
         return False, None
 
+
 def create_trip_advisor_agent(model_name="llama3"):
     """Creates and returns a configured trip advisor AI agent using Ollama"""
-    
+
     # Initialize the local Ollama language model
     llm = OllamaLLM(
         model=model_name,
         base_url="http://localhost:11434",
         temperature=0.1,  # Low temperature for consistent, factual responses
     )
-    
+
     # Create tool instances
     tools = [
         DestinationRecommenderTool(),
@@ -253,13 +268,13 @@ def create_trip_advisor_agent(model_name="llama3"):
         WeatherInfoTool(),
         TravelTipsTool()
     ]
-    
+
     # Create memory for conversation history
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True
     )
-    
+
     # Create the agent with tools and memory
     agent = initialize_agent(
         tools=tools,
@@ -269,14 +284,15 @@ def create_trip_advisor_agent(model_name="llama3"):
         verbose=True,
         handle_parsing_errors=True
     )
-    
+
     return agent
+
 
 def chat_with_agent(agent, message):
     """Function to chat with the trip advisor agent"""
     if agent is None:
         return "Please create the agent first by ensuring Ollama is running!"
-    
+
     try:
         response = agent.invoke({"input": message})
         return response.get("output", "No response received")
