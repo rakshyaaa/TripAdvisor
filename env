@@ -1,0 +1,4 @@
+DB_USER=Rakshya
+DB_PASSWORD=Mdde6bKfC7Y9
+DB_HOST=mssql-foundation-website.cduxvhmafj3d.us-east-2.rds.amazonaws.com
+DB_NAME=fnd_website
