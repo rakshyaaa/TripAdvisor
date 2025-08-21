@@ -15,3 +15,4 @@ typing-extensions
 
 # Optional: Enhanced functionality
 python-dotenv
+pyodbc

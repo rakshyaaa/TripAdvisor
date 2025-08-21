@@ -1,12 +1,11 @@
 
 import streamlit as st
-import os
-from travel_ai_agent import create_trip_advisor_agent, chat_with_agent, check_ollama_status
+from trip_ai import create_trip_advisor_agent, chat_with_agent, check_ollama_status
 
 
-st.title("AI Trip Advisor")
+st.title("Strategic Fundraising Trip Advisor")
 st.subheader(
-    "Your Personal Travel Planning Assistant (Powered by Local Llama3)")
+    "Leadership fundraising Travel Planning Assistant (Powered by Local Llama3)")
 
 # Check Ollama status
 ollama_available, llama3_model = check_ollama_status()
@@ -27,10 +26,10 @@ with st.sidebar:
 # Initialize agent
 if "agent" not in st.session_state and ollama_available:
     try:
-        agent = create_trip_advisor_agent(llama3_model)
+        st.session_state.agent = create_trip_advisor_agent(llama3_model)
         st.success("Agent initialized!")
     except Exception as e:
-        st.error(f"Error initializing agent APPle: {e}")
+        st.error(f"Error initializing agent: {e}")
 
 # Chat interface
 if "messages" not in st.session_state:
@@ -49,24 +48,10 @@ if prompt := st.chat_input("Ask me about your travel plans!"):
 
     if "agent" in st.session_state:
         with st.chat_message("assistant"):
-            with st.spinner("Planning your trip..."):
+            with st.spinner("Thinking"):
                 response = chat_with_agent(st.session_state.agent, prompt)
                 st.markdown(response)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response})
     else:
         st.error("Please ensure Ollama is running and Llama3 is installed!")
-
-# # Example questions
-# st.sidebar.header("Example Questions")
-# examples = [
-#     "I want to visit Europe in summer",
-#     "Plan a 5-day itinerary for Tokyo",
-#     "What's the best time to visit Thailand?",
-#     "Calculate costs for a week in Paris"
-# ]
-
-# for example in examples:
-#     if st.sidebar.button(example):
-#         st.session_state.messages.append({"role": "user", "content": example})
-#         st.rerun()
