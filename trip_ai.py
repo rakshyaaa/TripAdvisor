@@ -5,8 +5,8 @@ from langchain.agents import AgentType, initialize_agent
 from langchain.memory import ConversationBufferMemory
 from langchain_ollama import OllamaLLM
 from langchain_community.tools import DuckDuckGoSearchResults
-from database import recommend_next_trip
-from langchain.tools import Tool
+from database import fetch_candidates
+from langchain.tools import StructuredTool
 
 
 def check_ollama_status():
@@ -37,7 +37,7 @@ def check_ollama_status():
         return False, None
 
 
-def create_trip_advisor_agent(model_name="llama3"):
+def create_trip_advisor_agent(model_name="gpt-oss:20b"):
     """Creates and returns a configured trip advisor AI agent using Ollama"""
 
     # Initialize the local Ollama language model
@@ -47,15 +47,22 @@ def create_trip_advisor_agent(model_name="llama3"):
         temperature=0.1,  # Low temperature for consistent, factual responses
     )
 
-    recommend_tool = Tool(
+    recommend_tool = StructuredTool.from_function(
+        func=lambda args: rank_backend(**args.dict()),
         name="FundraisingTripAdvisor",
-        func=recommend_next_trip,
-        description="Suggests next fundraising visits based on the user's history on engagement score, title, and position"
+        description="Return TOP-N prioritized prospects from SQL Server (no itinerary). Use for prioritization.",
+
     )
 
-    search_tool = DuckDuckGoSearchResults(
-        description="Use this tool to find NEW donors, foundations, or fundraising events in a given city or region. Input should be the city or organization name."
-    )
+    # search_tool = DuckDuckGoSearchResults(
+    #     description="Use this tool to find NEW prospects, foundations, or fundraising events in a given city or region. Input should be the city or prospect's name."
+    # )
+
+    # general_questions_tool = Tool(
+    #     name="GeneralQuestionsAssistant",
+    #     func=lambda query: llm.invoke(query),
+    #     description="Use this tool to answer general questions not related to wealth engine, travel or stakeholder engagement."
+    # )
 
     # Create tool instances
     tools = [
@@ -69,57 +76,46 @@ def create_trip_advisor_agent(model_name="llama3"):
         return_messages=True
     )
 
-    # system_prompt = """
-    #     You are a friendly and knowledgeable AI trip advisor assistant powered by Llama3. Your role is to help users plan their perfect trips by:
-
-    #     1. Researching destinations and providing up-to-date information
-    #     2. Finding popular attractions and activities
-    #     3. Suggesting accommodations based on user preferences
-    #     4. Providing local transportation options
-    #     5. Offering weather information and best travel times
-    #     6. Giving budger estimated and travel tips
-
-    #     Always be helpful, enthusiastic, and provide detailed, actionable advice. Use the available tools to gather information and give accurate recommendations after verifying it.
-
-    #     When users ask questions:
-    #     - Be conversational and friendly
-    #     - Ask clarifying questions if needed
-    #     - Use the tools to provide specific, accurate information
-    #     - Give practical tips and suggestions
-    #     - Consider their budget, interests, and travel style
-
-    #     Remember: You're here to make travel planning easier and more enjoyable!
-    #     """
-
     system_prompt = """
-        You are a strategic fundraising travel advisor.
-        When giving recommendations, always:
+        You are Fundraising Prospect Ranker.
 
-        1. ALWAYS use the 'FundraisingTripAdvisor' tool to look up the stakeholder’s past meetings and engagement scores from the database.
-        2. THEN use the 'DuckDuckGoSearchResults' tool to research potential NEW places to visit or new persons/organizations to meet in those regions.
-        3. Combine both insights: prioritize follow-ups with high engagement AND suggest fresh opportunities (events, new donors, or foundations).
-            
-        Never invent names or organizations - rely only on database results or search tool outputs.
+        Mission:
+        - Recommend the next prospects to prioritize. Do NOT create itineraries or dates.
 
-        Verify each information and return actionable recommendations (who to visit, why, and suggested next steps).
+        Ground truth:
+        - Use ONLY the FundraisingTripAdvisor tool for prospect facts and rankings.
+        - Use WebSearch only for discovering NEW prospects/foundations/events outside our data.
+        - Never invent names, gifts, or scores. Say when data is missing.
+
+        Policy:
+        1) For prioritization, call FundraisingTripAdvisor first.
+        2) For discovery, call WebSearch.
+        3) No travel plans.
+
+        Output:
+        - Title: Top prospects (N)
+        - Then N lines:
+          - name_or_id (or display name) — city, location — final_score X.XX
+          - Why: 2–3 short reasons (capacity / propensity / engagement / recency)
+        - Notes: mention defaults/missing fields if any.
+
+        Guardrails:
+        - Exclude Do-Not-Contact; avoid contacts within 90 days unless user overrides.
+        - Always show final_score. Keep it concise.
         """
 
-    # prompt = ChatPromptTemplate.from_messages([
-    #     SystemMessagePromptTemplate.from_template(system_prompt),
-    # ])
-
     # Create the agent with tools, memory and custom_system_prompt
-    agent = initialize_agent(
+    fundraising_agent = initialize_agent(
         tools=tools,
         llm=llm,
         agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
         memory=memory,
-        verbose=True,
+        verbose=True,  # it shows what the agent is thinking/doing behind the scenes
         handle_parsing_errors=True,
         agent_kwargs={"system_message": system_prompt}  # prompt injection
     )
 
-    return agent
+    return fundraising_agent
 
 
 def chat_with_agent(agent, message):
