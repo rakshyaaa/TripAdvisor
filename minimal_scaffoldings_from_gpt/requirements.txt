@@ -1,0 +1,18 @@
+# Core LangChain dependencies
+langchain==0.3.27
+langchain-core==0.3.72
+langchain-ollama
+
+# Ollama integration
+requests
+
+# Streamlit for web interface
+streamlit
+
+# Data handling and utilities
+pydantic
+typing-extensions
+
+# Optional: Enhanced functionality
+python-dotenv
+pyodbc
